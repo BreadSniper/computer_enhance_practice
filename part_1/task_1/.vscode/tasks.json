@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "BuildAndTestTask",
+            "type": "shell",
+            "command": "build.bat",
+            "problemMatcher": []
+        },
+        {
+            "label": "DebugTask",
+            "type": "shell",
+            "command": "debug.bat ${file}",
+            "problemMatcher": []
+        }
+    ]
+}

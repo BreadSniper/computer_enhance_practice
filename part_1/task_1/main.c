@@ -1,0 +1,109 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <assert.h>
+
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
+
+typedef enum 
+{
+    OpCodeType_MOV_REG = 0b00100010
+} OpCodeType;
+
+typedef enum
+{
+    RegType_AX = 0b00000000,
+    RegType_CX = 0b00000001,
+    RegType_DX = 0b00000010,
+    RegType_BX = 0b00000011,
+    RegType_SP = 0b00000100,
+    RegType_BP = 0b00000101,
+    RegType_SI = 0b00000110,
+    RegType_DI = 0b00000111
+} RegType;
+
+const char* RegToString(RegType reg, uint8_t isWordData)
+{
+    switch(reg)
+    {
+        case RegType_AX: return isWordData ? "AX" : "AL";
+        case RegType_CX: return isWordData ? "CX" : "CL";
+        case RegType_DX: return isWordData ? "DX" : "DL";
+        case RegType_BX: return isWordData ? "BX" : "BL";
+        case RegType_SP: return isWordData ? "SP" : "AH";
+        case RegType_BP: return isWordData ? "BP" : "CH";
+        case RegType_SI: return isWordData ? "SI" : "DH";
+        case RegType_DI: return isWordData ? "DI" : "BH";
+        default: return "";
+    }
+}
+
+int main(int argsCount, const char** args)
+{
+    if (argsCount != 2)
+    {
+        printf("Error|There should be exactly one argument: name of the binary assembled with nasm, for disassembly.\n");
+        return 1;
+    }
+
+    uint8_t supportedOpCodes[256] = {0};
+    supportedOpCodes[OpCodeType_MOV_REG] = 1;
+
+    const char* fileName = args[1];
+
+    FILE* fileHandle = NULL;
+    if (fileHandle = fopen(fileName, "rb"))
+    {
+        uint8_t buffer[2048] = {0};
+        size_t readCount = 0;
+        while (readCount = fread(buffer, sizeof(uint8_t), 2048, fileHandle))
+        {
+            size_t i = 0;
+            while (i < readCount)
+            {
+                uint8_t opCodeByte = buffer[i++];
+
+                uint8_t opCodeType         = (0b11111100 & opCodeByte) >> 2;
+                uint8_t isDestinationInReg = (0b00000010 & opCodeByte) >> 1;
+                uint8_t isWordData         = (0b00000001 & opCodeByte) >> 0;
+
+                if (supportedOpCodes[opCodeType])
+                {
+                    switch((OpCodeType)opCodeType)
+                    {
+                        case OpCodeType_MOV_REG:
+                        {                            
+                            uint8_t dataByte = buffer[i++];
+
+                            uint8_t mod = (dataByte & 0b11000000) >> 6;
+                            uint8_t reg = (dataByte & 0b00111000) >> 3;
+                            uint8_t rm  = (dataByte & 0b00000111) >> 0;
+
+                            assert(mod == 0b11);
+                            
+                            if (isDestinationInReg)
+                            {
+                                printf("MOV %s, %s\n", RegToString(reg, isWordData), RegToString(rm, isWordData));
+                            }
+                            else
+                            {
+                                printf("MOV %s, %s\n", RegToString(rm, isWordData), RegToString(reg, isWordData));
+                            }
+                            break;
+                        }
+                        default:
+                            assert(0);
+                            break;
+                    }
+                }
+                else
+                {
+                    printf("Error|Encountered unknown instruction.\n");
+                    return 1;
+                }
+            }
+        }
+    }
+
+    return 0;
+}
