@@ -86,7 +86,7 @@ int main(int argsCount, const char** args)
                             }
                             else
                             {
-                                //fprintf(outputFile, "MOV %s, %s\n", RegToString(rm, isWordData), RegToString(reg, isWordData));
+                                fprintf(outputFile, "MOV %s, %s\n", RegToString(rm, isWordData), RegToString(reg, isWordData));
                             }
                             break;
                         }

@@ -12,6 +12,8 @@ cl /std:c17 /Od /Zi main.c || exit /b 1
 :: test
 call :Test "listing_0037_single_register_mov" || exit /b 1
 call :Test "listing_0038_many_register_mov" || exit /b 1
+call :Test "listing_0039_more_movs" || exit /b 1
+call :Test "listing_0040_challenge_movs" || exit /b 1
 
 exit /b 0
 
