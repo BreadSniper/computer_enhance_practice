@@ -1,2 +1,1 @@
-# Part 1. 
-## Implement disassembly for mov operation.
+# Implement disassembly for 8086.
