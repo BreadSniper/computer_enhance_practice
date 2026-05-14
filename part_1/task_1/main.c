@@ -2,9 +2,6 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define STB_DS_IMPLEMENTATION
-#include "stb_ds.h"
-
 typedef enum 
 {
     OpCodeType_MOV_REG = 0b00100010
@@ -40,23 +37,25 @@ const char* RegToString(RegType reg, uint8_t isWordData)
 
 int main(int argsCount, const char** args)
 {
-    if (argsCount != 2)
+    if (argsCount != 3)
     {
-        printf("Error|There should be exactly one argument: name of the binary assembled with nasm, for disassembly.\n");
+        printf("Error|There should be exactly two arguments: name of the binary assembled with nasm, for disassembly and output binary name.\n");
         return 1;
     }
 
     uint8_t supportedOpCodes[256] = {0};
     supportedOpCodes[OpCodeType_MOV_REG] = 1;
 
-    const char* fileName = args[1];
+    const char* inputFileName = args[1];
+    const char* outputFileName = args[2];
 
-    FILE* fileHandle = NULL;
-    if (fileHandle = fopen(fileName, "rb"))
+    FILE* inputFile = NULL;
+    FILE* outputFile = NULL;
+    if ((inputFile = fopen(inputFileName, "rb")) && (outputFile = fopen(outputFileName, "w"))) // not closing the files
     {
         uint8_t buffer[2048] = {0};
         size_t readCount = 0;
-        while (readCount = fread(buffer, sizeof(uint8_t), 2048, fileHandle))
+        while (readCount = fread(buffer, sizeof(uint8_t), 2048, inputFile))
         {
             size_t i = 0;
             while (i < readCount)
@@ -83,11 +82,11 @@ int main(int argsCount, const char** args)
                             
                             if (isDestinationInReg)
                             {
-                                printf("MOV %s, %s\n", RegToString(reg, isWordData), RegToString(rm, isWordData));
+                                fprintf(outputFile, "MOV %s, %s\n", RegToString(reg, isWordData), RegToString(rm, isWordData));
                             }
                             else
                             {
-                                printf("MOV %s, %s\n", RegToString(rm, isWordData), RegToString(reg, isWordData));
+                                //fprintf(outputFile, "MOV %s, %s\n", RegToString(rm, isWordData), RegToString(reg, isWordData));
                             }
                             break;
                         }
