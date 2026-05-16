@@ -8,6 +8,7 @@ echo ------------------------------------------------
 
 :: build
 cl /std:c17 /Od /Zi main.c || exit /b 1
+echo ------------------------------------------------
 
 :: test
 call :Test "listing_0037_single_register_mov" || exit /b 1
@@ -22,7 +23,6 @@ exit /b 0
 :Test
 set "TEST_RESULT=0"
 
-echo ------------------------------------------------
 echo Running %~1 test
 
 nasm.exe -f bin "%~1.asm" -o "%~1_original.bin" || goto TestFailed

@@ -2,6 +2,11 @@
 #include <stdint.h>
 #include <assert.h>
 
+#define RETURN_INIT() int error_code = 0
+#define RETURN_SUCCESS() goto end
+#define RETURN_ERROR(err_code, message) printf("Error|" message "\n"); error_code = 1; goto end
+#define RETURN(clean_block) end: clean_block return error_code
+
 typedef enum 
 {
     OpCodeType_MOV_REG = 0b00100010
@@ -37,10 +42,11 @@ const char* RegToString(RegType reg, uint8_t isWordData)
 
 int main(int argsCount, const char** args)
 {
+    RETURN_INIT();
+
     if (argsCount != 3)
     {
-        printf("Error|There should be exactly two arguments: name of the binary assembled with nasm, for disassembly and output binary name.\n");
-        return 1;
+        RETURN_ERROR(1, "There should be exactly two arguments: name of the binary assembled with nasm, for disassembly and output binary name.");
     }
 
     uint8_t supportedOpCodes[256] = {0};
@@ -49,60 +55,69 @@ int main(int argsCount, const char** args)
     const char* inputFileName = args[1];
     const char* outputFileName = args[2];
 
-    FILE* inputFile = NULL;
-    FILE* outputFile = NULL;
-    if ((inputFile = fopen(inputFileName, "rb")) && (outputFile = fopen(outputFileName, "w"))) // not closing the files
+    FILE* inputFile = fopen(inputFileName, "rb");
+    if (!inputFile) 
     {
-        uint8_t buffer[2048] = {0};
-        size_t readCount = 0;
-        while (readCount = fread(buffer, sizeof(uint8_t), 2048, inputFile))
+        RETURN_ERROR(1, "No binary file found.");
+    }
+
+    FILE* outputFile = fopen(outputFileName, "w");
+    if (!outputFile) 
+    {
+        RETURN_ERROR(1, "Couldn't create output asm file.");
+    }
+
+    uint8_t buffer[2048] = {0};
+    size_t readCount = 0;
+    while (readCount = fread(buffer, sizeof(uint8_t), 2048, inputFile))
+    {
+        size_t i = 0;
+        while (i < readCount)
         {
-            size_t i = 0;
-            while (i < readCount)
+            uint8_t opCodeByte = buffer[i++];
+
+            uint8_t opCodeType         = (0b11111100 & opCodeByte) >> 2;
+            uint8_t isDestinationInReg = (0b00000010 & opCodeByte) >> 1;
+            uint8_t isWordData         = (0b00000001 & opCodeByte) >> 0;
+
+            if (supportedOpCodes[opCodeType])
             {
-                uint8_t opCodeByte = buffer[i++];
-
-                uint8_t opCodeType         = (0b11111100 & opCodeByte) >> 2;
-                uint8_t isDestinationInReg = (0b00000010 & opCodeByte) >> 1;
-                uint8_t isWordData         = (0b00000001 & opCodeByte) >> 0;
-
-                if (supportedOpCodes[opCodeType])
+                switch((OpCodeType)opCodeType)
                 {
-                    switch((OpCodeType)opCodeType)
-                    {
-                        case OpCodeType_MOV_REG:
-                        {                            
-                            uint8_t dataByte = buffer[i++];
+                    case OpCodeType_MOV_REG:
+                    {                            
+                        uint8_t dataByte = buffer[i++];
 
-                            uint8_t mod = (dataByte & 0b11000000) >> 6;
-                            uint8_t reg = (dataByte & 0b00111000) >> 3;
-                            uint8_t rm  = (dataByte & 0b00000111) >> 0;
+                        uint8_t mod = (dataByte & 0b11000000) >> 6;
+                        uint8_t reg = (dataByte & 0b00111000) >> 3;
+                        uint8_t rm  = (dataByte & 0b00000111) >> 0;
 
-                            assert(mod == 0b11);
-                            
-                            if (isDestinationInReg)
-                            {
-                                fprintf(outputFile, "MOV %s, %s\n", RegToString(reg, isWordData), RegToString(rm, isWordData));
-                            }
-                            else
-                            {
-                                fprintf(outputFile, "MOV %s, %s\n", RegToString(rm, isWordData), RegToString(reg, isWordData));
-                            }
-                            break;
+                        assert(mod == 0b11);
+                        
+                        if (isDestinationInReg)
+                        {
+                            fprintf(outputFile, "MOV %s, %s\n", RegToString(reg, isWordData), RegToString(rm, isWordData));
                         }
-                        default:
-                            assert(0);
-                            break;
+                        else
+                        {
+                            fprintf(outputFile, "MOV %s, %s\n", RegToString(rm, isWordData), RegToString(reg, isWordData));
+                        }
+                        break;
                     }
+                    default:
+                        assert(0);
+                        break;
                 }
-                else
-                {
-                    printf("Error|Encountered unknown instruction.\n");
-                    return 1;
-                }
+            }
+            else
+            {
+                RETURN_ERROR(1, "Encountered unknown instruction.");
             }
         }
     }
 
-    return 0;
+    RETURN({
+        if (inputFile)  fclose(inputFile);
+        if (outputFile) fclose(outputFile);
+    });
 }
