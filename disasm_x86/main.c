@@ -13,8 +13,8 @@ typedef enum
     OpCodeType_MOV_RM_REG = 0b00100010,
     OpCodeType_MOV_IM__RM = 0b01100011,
     OpCodeType_MOV_IM_REG = 0b00001011,
-    OpCodeType_MOV_MEM_AC = 0b00001010,
-    OpCodeType_MOV_AC_MEM = 0b01010000,
+    OpCodeType_MOV_MEM_AC = 0b01010000,
+    OpCodeType_MOV_AC_MEM = 0b01010001,
     OpCodeType_MOV_RM_SEG = 0b10001110,
     OpCodeType_MOV_SEG_RM = 0b10001100
 } OpCodeType;
@@ -72,7 +72,7 @@ const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char
             switch (mod)
             {
                 case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BX + SI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + SI + %u]", buffer[(*i)++]        ); break;
+                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + SI + %d]", (int8_t)buffer[(*i)++]); break;
                 case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BX + SI + %u]", ReadData(buffer, i, 1)); break;
                 default: assert(0); break;
             }
@@ -83,7 +83,7 @@ const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char
             switch (mod)
             {
                 case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BX + DI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + DI + %u]", buffer[(*i)++]        ); break;
+                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + DI + %d]", (int8_t)buffer[(*i)++]); break;
                 case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BX + DI + %u]", ReadData(buffer, i, 1)); break;
                 default: assert(0); break;
             }
@@ -94,7 +94,7 @@ const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char
             switch (mod)
             {
                 case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BP + SI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + SI + %u]", buffer[(*i)++]        ); break;
+                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + SI + %d]", (int8_t)buffer[(*i)++]); break;
                 case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BP + SI + %u]", ReadData(buffer, i, 1)); break;
                 default: assert(0); break;
             }
@@ -105,7 +105,7 @@ const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char
             switch (mod)
             {
                 case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BP + DI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + DI + %u]", buffer[(*i)++]        ); break;
+                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + DI + %d]", (int8_t)buffer[(*i)++]); break;
                 case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BP + DI + %u]", ReadData(buffer, i, 1)); break;
                 default: assert(0); break;
             }
@@ -116,7 +116,7 @@ const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char
             switch (mod)
             {
                 case ModType_MemoryMode:                  snprintf(rmstr, 32, "[SI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[SI + %u]", buffer[(*i)++]        ); break;
+                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[SI + %d]", (int8_t)buffer[(*i)++]); break;
                 case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[SI + %u]", ReadData(buffer, i, 1)); break;
                 default: assert(0); break;
             }
@@ -127,7 +127,7 @@ const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char
             switch (mod)
             {
                 case ModType_MemoryMode:                  snprintf(rmstr, 32, "[DI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[DI + %u]", buffer[(*i)++]        ); break;
+                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[DI + %d]", (int8_t)buffer[(*i)++]); break;
                 case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[DI + %u]", ReadData(buffer, i, 1)); break;
                 default: assert(0); break;
             }
@@ -138,7 +138,7 @@ const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char
             switch (mod)
             {
                 case ModType_MemoryMode:                  snprintf(rmstr, 32, "[%u]",      ReadData(buffer, i, 1)); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + %u]", buffer[(*i)++]        ); break;
+                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + %d]", (int8_t)buffer[(*i)++]); break;
                 case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BP + %u]", ReadData(buffer, i, 1)); break;
                 default: assert(0); break;
             }
@@ -149,7 +149,7 @@ const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char
             switch (mod)
             {
                 case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BX]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + %u]", buffer[(*i)++]        ); break;
+                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + %d]", (int8_t)buffer[(*i)++]); break;
                 case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BX + %u]", ReadData(buffer, i, 1)); break;
                 default: assert(0); break;
             }
@@ -263,7 +263,9 @@ int main(int argsCount, const char** args)
                     uint8_t rm  = (dataByte & 0b00000111) >> 0;
 
                     char rmstr[32] = {0};
-                    fprintf(outputFile, "MOV %s, %u\n", RmToString(rm, mod, buffer, &i, rmstr), ReadData(buffer, &i, isWordData));
+                    RmToString(rm, mod, buffer, &i, rmstr);
+                    uint16_t data = ReadData(buffer, &i, isWordData);
+                    fprintf(outputFile, "MOV %s, %s %u\n", rmstr, isWordData ? "word" : "byte", data);
                     break;
                 }
                 case OpCodeType_MOV_IM_REG:
