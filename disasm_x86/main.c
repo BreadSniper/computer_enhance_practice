@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
+#include <math.h>
 
 #define RETURN_INIT() int error_code = 0
 #define RETURN_SUCCESS() goto end
@@ -63,104 +64,82 @@ uint16_t ReadData(uint8_t* buffer, size_t* i, uint8_t isWordData)
     return ((result | (uint16_t)hi) << 8) | (uint16_t)lo;
 }
 
-const char* RmToString(uint8_t rm, ModType mod, uint8_t* buffer, size_t* i, char* rmstr)
+#define RMSTR_MAX 32
+
+typedef struct {
+    char rmstr[RMSTR_MAX];
+    uint8_t* buffer;
+    size_t* i;
+} RmToStringContext;
+
+void PrintNoDisplacement(const char* fmt, RmToStringContext* ctx)
 {
-    switch (rm)
+    uint16_t val = ReadData(ctx->buffer, ctx->i, 1);
+    snprintf(ctx->rmstr, 32, fmt, val);
+}
+
+void Print8bitDisplacement(const char* fmt, RmToStringContext* ctx)
+{
+    int8_t data = (int8_t)ctx->buffer[(*ctx->i)++];
+    snprintf(ctx->rmstr, 32, fmt, data > 0 ? '+' : '-', abs(data));
+}
+
+void Print16bitDisplacement(const char* fmt, RmToStringContext* ctx)
+{
+    uint16_t val = ReadData(ctx->buffer, ctx->i, 1);
+    snprintf(ctx->rmstr, 32, fmt, val);
+}
+
+const char* RmToString(uint8_t rm, ModType mod, RmToStringContext* ctx)
+{
+    const char* result[8] = {0};
+
+    result[0b00000000] = "[BX + SI";
+    result[0b00000001] = "[BX + DI";
+    result[0b00000010] = "[BP + SI";
+    result[0b00000011] = "[BP + DI";
+    result[0b00000100] = "[SI";
+    result[0b00000101] = "[DI";
+    result[0b00000110] = "[BP";
+    result[0b00000111] = "[BX";
+
+    char fmt[RMSTR_MAX] = {0};
+
+    switch(mod)
     {
-        case 0b00000000:
+        case ModType_MemoryMode:
         {
-            switch (mod)
+            if (rm == 0b00000110)
             {
-                case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BX + SI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + SI + %d]", (int8_t)buffer[(*i)++]); break;
-                case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BX + SI + %u]", ReadData(buffer, i, 1)); break;
-                default: assert(0); break;
+                snprintf(fmt, RMSTR_MAX, "[%%u]");
+                PrintNoDisplacement(fmt, ctx);
+            }
+            else
+            {
+                snprintf(ctx->rmstr, RMSTR_MAX, "%s]", result[rm]);
             }
             break;
         }
-        case 0b00000001:
+        case ModType_MemoryModeDisplacement8Bit:
         {
-            switch (mod)
-            {
-                case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BX + DI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + DI + %d]", (int8_t)buffer[(*i)++]); break;
-                case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BX + DI + %u]", ReadData(buffer, i, 1)); break;
-                default: assert(0); break;
-            }
+            snprintf(fmt, RMSTR_MAX, "%s %%c %%d]", result[rm]);
+            Print8bitDisplacement(fmt, ctx); break;
             break;
         }
-        case 0b00000010:
+        case ModType_MemoryModeDisplacement16Bit:
         {
-            switch (mod)
-            {
-                case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BP + SI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + SI + %d]", (int8_t)buffer[(*i)++]); break;
-                case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BP + SI + %u]", ReadData(buffer, i, 1)); break;
-                default: assert(0); break;
-            }
-            break;
-        }
-        case 0b00000011:
-        {
-            switch (mod)
-            {
-                case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BP + DI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + DI + %d]", (int8_t)buffer[(*i)++]); break;
-                case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BP + DI + %u]", ReadData(buffer, i, 1)); break;
-                default: assert(0); break;
-            }
-            break;
-        }
-        case 0b00000100:
-        {
-            switch (mod)
-            {
-                case ModType_MemoryMode:                  snprintf(rmstr, 32, "[SI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[SI + %d]", (int8_t)buffer[(*i)++]); break;
-                case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[SI + %u]", ReadData(buffer, i, 1)); break;
-                default: assert(0); break;
-            }
-            break;
-        }
-        case 0b00000101:
-        {
-            switch (mod)
-            {
-                case ModType_MemoryMode:                  snprintf(rmstr, 32, "[DI]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[DI + %d]", (int8_t)buffer[(*i)++]); break;
-                case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[DI + %u]", ReadData(buffer, i, 1)); break;
-                default: assert(0); break;
-            }
-            break;
-        }
-        case 0b00000110:
-        {
-            switch (mod)
-            {
-                case ModType_MemoryMode:                  snprintf(rmstr, 32, "[%u]",      ReadData(buffer, i, 1)); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BP + %d]", (int8_t)buffer[(*i)++]); break;
-                case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BP + %u]", ReadData(buffer, i, 1)); break;
-                default: assert(0); break;
-            }
-            break;
-        }
-        case 0b00000111:
-        {
-            switch (mod)
-            {
-                case ModType_MemoryMode:                  snprintf(rmstr, 32, "[BX]"                             ); break;
-                case ModType_MemoryModeDisplacement8Bit:  snprintf(rmstr, 32, "[BX + %d]", (int8_t)buffer[(*i)++]); break;
-                case ModType_MemoryModeDisplacement16Bit: snprintf(rmstr, 32, "[BX + %u]", ReadData(buffer, i, 1)); break;
-                default: assert(0); break;
-            }
+            snprintf(fmt, RMSTR_MAX, "%s + %%u]", result[rm]);
+            Print16bitDisplacement(fmt, ctx);
             break;
         }
         default:
-            assert(0);
+        {
+            assert(0); 
             break;
+        }
     }
 
-    return rmstr;
+    return ctx->rmstr;
 }
 
 OpCodeType GetOpCodeType(uint8_t opCodeByte)
@@ -244,13 +223,13 @@ int main(int argsCount, const char** args)
                     }
                     else if (isDestinationInReg)
                     {
-                        char rmstr[32] = {0};
-                        fprintf(outputFile, "MOV %s, %s\n", RegToString(reg, isWordData), RmToString(rm, mod, buffer, &i, rmstr));
+                        RmToStringContext ctx = { .rmstr = {0}, .buffer = buffer, .i = &i };
+                        fprintf(outputFile, "MOV %s, %s\n", RegToString(reg, isWordData), RmToString(rm, mod, &ctx));
                     }
                     else
                     {
-                        char rmstr[32] = {0};
-                        fprintf(outputFile, "MOV %s, %s\n", RmToString(rm, mod, buffer, &i, rmstr), RegToString(reg, isWordData));
+                        RmToStringContext ctx = { .rmstr = {0}, .buffer = buffer, .i = &i };
+                        fprintf(outputFile, "MOV %s, %s\n", RmToString(rm, mod, &ctx), RegToString(reg, isWordData));
                     }
                     break;
                 }
@@ -262,10 +241,10 @@ int main(int argsCount, const char** args)
                     uint8_t mod = (dataByte & 0b11000000) >> 6;
                     uint8_t rm  = (dataByte & 0b00000111) >> 0;
 
-                    char rmstr[32] = {0};
-                    RmToString(rm, mod, buffer, &i, rmstr);
+                    RmToStringContext ctx = { .rmstr = {0}, .buffer = buffer, .i = &i };
+                    RmToString(rm, mod, &ctx);
                     uint16_t data = ReadData(buffer, &i, isWordData);
-                    fprintf(outputFile, "MOV %s, %s %u\n", rmstr, isWordData ? "word" : "byte", data);
+                    fprintf(outputFile, "MOV %s, %s %u\n", ctx.rmstr, isWordData ? "word" : "byte", data);
                     break;
                 }
                 case OpCodeType_MOV_IM_REG:
