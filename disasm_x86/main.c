@@ -8,13 +8,29 @@
 #define RETURN_ERROR(err_code, message) printf("Error|" message "\n"); error_code = err_code; goto end
 #define RETURN(clean_block) end: clean_block return error_code
 
+#define REGISTER_OPERATION(shift, opcode)\
+    if ((opCodeByte >> shift) == opcode)\
+    {\
+        *outOpCode = opcode;\
+        return 1;\
+    }\
+
 typedef enum 
 {
-    OpCodeType_INV        = 0b00000000,
     OpCodeType_MOV_RM_REG = 0b00100010,
+    OpCodeType_ADD_RM_REG = 0b00000000,
+    OpCodeType_SUB_RM_REG = 0b00001010,
+    OpCodeType_CMP_RM_REG = 0b00001110,
+
     OpCodeType_MOV_IM__RM = 0b01100011,
-    OpCodeType_MOV_IM_REG = 0b00001011,
+    OpCodeType_ADDSUB_CMP = 0b00100000,
+
     OpCodeType_MOV_MEM_AC = 0b01010000,
+    OpCodeType_ADD_IM__AC = 0b00000010,
+    OpCodeType_SUB_IM__AC = 0b00010110,
+    OpCodeType_CMP_IM__AC = 0b00011110,
+    
+    OpCodeType_MOV_IM_REG = 0b00001011,
     OpCodeType_MOV_AC_MEM = 0b01010001,
     OpCodeType_MOV_RM_SEG = 0b10001110,
     OpCodeType_MOV_SEG_RM = 0b10001100
@@ -142,17 +158,27 @@ const char* RmToString(uint8_t rm, ModType mod, RmToStringContext* ctx)
     return ctx->rmstr;
 }
 
-OpCodeType GetOpCodeType(uint8_t opCodeByte)
+uint8_t GetOpCodeType(OpCodeType* outOpCode, uint8_t opCodeByte)
 {
-    if ((opCodeByte >> 2) == OpCodeType_MOV_RM_REG) return OpCodeType_MOV_RM_REG;
-    if ((opCodeByte >> 1) == OpCodeType_MOV_IM__RM) return OpCodeType_MOV_IM__RM;
-    if ((opCodeByte >> 4) == OpCodeType_MOV_IM_REG) return OpCodeType_MOV_IM_REG;
-    if ((opCodeByte >> 1) == OpCodeType_MOV_MEM_AC) return OpCodeType_MOV_MEM_AC;
-    if ((opCodeByte >> 1) == OpCodeType_MOV_AC_MEM) return OpCodeType_MOV_AC_MEM;
-    if ((opCodeByte >> 0) == OpCodeType_MOV_RM_SEG) return OpCodeType_MOV_RM_SEG;
-    if ((opCodeByte >> 0) == OpCodeType_MOV_SEG_RM) return OpCodeType_MOV_SEG_RM;
+    REGISTER_OPERATION(2, OpCodeType_MOV_RM_REG)
+    REGISTER_OPERATION(2, OpCodeType_ADD_RM_REG)
+    REGISTER_OPERATION(2, OpCodeType_SUB_RM_REG)
+    REGISTER_OPERATION(2, OpCodeType_CMP_RM_REG)
 
-    return OpCodeType_INV;
+    REGISTER_OPERATION(1, OpCodeType_MOV_IM__RM)
+    REGISTER_OPERATION(2, OpCodeType_ADDSUB_CMP)
+
+    REGISTER_OPERATION(1, OpCodeType_MOV_MEM_AC)
+    REGISTER_OPERATION(1, OpCodeType_ADD_IM__AC)
+    REGISTER_OPERATION(1, OpCodeType_SUB_IM__AC)
+    REGISTER_OPERATION(1, OpCodeType_CMP_IM__AC)
+
+    REGISTER_OPERATION(4, OpCodeType_MOV_IM_REG)
+    REGISTER_OPERATION(1, OpCodeType_MOV_AC_MEM)
+    REGISTER_OPERATION(0, OpCodeType_MOV_RM_SEG)
+    REGISTER_OPERATION(0, OpCodeType_MOV_SEG_RM)
+
+    return 0;
 }
 
 int main(int argsCount, const char** args)
@@ -190,16 +216,20 @@ int main(int argsCount, const char** args)
         {
             uint8_t opCodeByte = buffer[i++];
 
-            OpCodeType opCodeType = GetOpCodeType(opCodeByte);
+            OpCodeType opCodeType;
 
-            if (opCodeType == OpCodeType_INV)
+            if (!GetOpCodeType(&opCodeType, opCodeByte))
             {
+                printf("Unknown instruction: %#x\n", opCodeByte);
                 RETURN_ERROR(1, "Encountered unknown instruction.");
             }
 
             switch(opCodeType)
             {
                 case OpCodeType_MOV_RM_REG:
+                case OpCodeType_ADD_RM_REG:
+                case OpCodeType_SUB_RM_REG:
+                case OpCodeType_CMP_RM_REG:
                 {
                     uint8_t isDestinationInReg = (0b00000010 & opCodeByte) >> 1;
                     uint8_t isWordData         = (0b00000001 & opCodeByte) >> 0;
@@ -210,41 +240,70 @@ int main(int argsCount, const char** args)
                     uint8_t reg = (dataByte & 0b00111000) >> 3;
                     uint8_t rm  = (dataByte & 0b00000111) >> 0;
 
+                    char opStr[4] = {0};
+                    if (opCodeType == OpCodeType_ADD_RM_REG) strncpy(opStr, "ADD", sizeof(opStr));
+                    if (opCodeType == OpCodeType_SUB_RM_REG) strncpy(opStr, "SUB", sizeof(opStr));
+                    if (opCodeType == OpCodeType_MOV_RM_REG) strncpy(opStr, "MOV", sizeof(opStr));
+                    if (opCodeType == OpCodeType_CMP_RM_REG) strncpy(opStr, "CMP", sizeof(opStr));
+
                     if (mod == ModType_RegisterMode)
                     {
                         if (isDestinationInReg)
                         {
-                            fprintf(outputFile, "MOV %s, %s\n", RegToString(reg, isWordData), RegToString(rm, isWordData));
+                            fprintf(outputFile, "%s %s, %s\n", opStr, RegToString(reg, isWordData), RegToString(rm, isWordData));
                         }
                         else
                         {
-                            fprintf(outputFile, "MOV %s, %s\n", RegToString(rm, isWordData), RegToString(reg, isWordData));
+                            fprintf(outputFile, "%s %s, %s\n", opStr, RegToString(rm, isWordData), RegToString(reg, isWordData));
                         }
                     }
                     else if (isDestinationInReg)
                     {
                         RmToStringContext ctx = { .rmstr = {0}, .buffer = buffer, .i = &i };
-                        fprintf(outputFile, "MOV %s, %s\n", RegToString(reg, isWordData), RmToString(rm, mod, &ctx));
+                        fprintf(outputFile, "%s %s, %s\n", opStr, RegToString(reg, isWordData), RmToString(rm, mod, &ctx));
                     }
                     else
                     {
                         RmToStringContext ctx = { .rmstr = {0}, .buffer = buffer, .i = &i };
-                        fprintf(outputFile, "MOV %s, %s\n", RmToString(rm, mod, &ctx), RegToString(reg, isWordData));
+                        fprintf(outputFile, "%s %s, %s\n", opStr, RmToString(rm, mod, &ctx), RegToString(reg, isWordData));
                     }
                     break;
                 }
                 case OpCodeType_MOV_IM__RM:
+                case OpCodeType_ADDSUB_CMP:
                 {
-                    uint8_t isWordData = (0b00000001 & opCodeByte) >> 0;
+                    uint8_t isSignExtended = (0b00000010 & opCodeByte) >> 1;
+                    uint8_t isWordData     = (0b00000001 & opCodeByte) >> 0;
 
                     uint8_t dataByte = buffer[i++];
-                    uint8_t mod = (dataByte & 0b11000000) >> 6;
-                    uint8_t rm  = (dataByte & 0b00000111) >> 0;
+                    uint8_t mod  = (dataByte & 0b11000000) >> 6;
+                    uint8_t type = (dataByte & 0b00111000) >> 3;
+                    uint8_t rm   = (dataByte & 0b00000111) >> 0;
 
-                    RmToStringContext ctx = { .rmstr = {0}, .buffer = buffer, .i = &i };
-                    RmToString(rm, mod, &ctx);
+                    char opStr[4] = {0};
+                    strncpy(opStr, "MOV", sizeof(opStr));
+                    if (opCodeType == OpCodeType_ADDSUB_CMP)
+                    {
+                        if (type == 0b00000111) strncpy(opStr, "CMP", sizeof(opStr));
+                        if (type == 0b00000000) strncpy(opStr, "ADD", sizeof(opStr));
+                        if (type == 0b00000101) strncpy(opStr, "SUB", sizeof(opStr));
+                    }
+
+                    const char* rmStr = NULL;
+                    if (mod == ModType_RegisterMode)
+                    {
+                        rmStr = RegToString(rm, isWordData);
+                    }
+                    else
+                    {
+                        RmToStringContext ctx = { .rmstr = {0}, .buffer = buffer, .i = &i };
+                        rmStr = RmToString(rm, mod, &ctx);
+                    }
+                    
+                    if (opCodeType == OpCodeType_ADDSUB_CMP && isSignExtended) isWordData = 0;
+
                     uint16_t data = ReadData(buffer, &i, isWordData);
-                    fprintf(outputFile, "MOV %s, %s %u\n", ctx.rmstr, isWordData ? "word" : "byte", data);
+                    fprintf(outputFile, "%s %s, %s %u\n", opStr, rmStr, isWordData ? "word" : "byte", data);
                     break;
                 }
                 case OpCodeType_MOV_IM_REG:
@@ -255,9 +314,18 @@ int main(int argsCount, const char** args)
                     break;
                 }
                 case OpCodeType_MOV_MEM_AC:
+                case OpCodeType_ADD_IM__AC:
+                case OpCodeType_SUB_IM__AC:
+                case OpCodeType_CMP_IM__AC:
                 {
+                    char opStr[4] = {0};
+                    if (opCodeType == OpCodeType_MOV_MEM_AC) strncpy(opStr, "MOV", sizeof(opStr));
+                    if (opCodeType == OpCodeType_CMP_IM__AC) strncpy(opStr, "CMP", sizeof(opStr));
+                    if (opCodeType == OpCodeType_ADD_IM__AC) strncpy(opStr, "ADD", sizeof(opStr));
+                    if (opCodeType == OpCodeType_SUB_IM__AC) strncpy(opStr, "SUB", sizeof(opStr));
+
                     uint8_t isWordData = (0b00000001 & opCodeByte);
-                    fprintf(outputFile, "MOV %s, [%u]\n", RegToString(RegType_AX, isWordData), ReadData(buffer, &i, isWordData));
+                    fprintf(outputFile, "%s %s, [%u]\n", opStr, RegToString(RegType_AX, isWordData), ReadData(buffer, &i, isWordData));
                     break;
                 }
                 case OpCodeType_MOV_AC_MEM:
