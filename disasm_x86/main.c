@@ -33,7 +33,28 @@ typedef enum
     OpCodeType_MOV_IM_REG = 0b00001011,
     OpCodeType_MOV_AC_MEM = 0b01010001,
     OpCodeType_MOV_RM_SEG = 0b10001110,
-    OpCodeType_MOV_SEG_RM = 0b10001100
+    OpCodeType_MOV_SEG_RM = 0b10001100,
+
+    OpCodeType_JE         = 0b01110100,
+    OpCodeType_JL         = 0b01111100,
+    OpCodeType_JLE        = 0b01111110,
+    OpCodeType_JB         = 0b01110010,
+    OpCodeType_JBE        = 0b01110110,
+    OpCodeType_JP         = 0b01111010,
+    OpCodeType_JO         = 0b01110000,
+    OpCodeType_JS         = 0b01111000,
+    OpCodeType_JNE        = 0b01110101,
+    OpCodeType_JNL        = 0b01111101,
+    OpCodeType_JG         = 0b01111111,
+    OpCodeType_JNB        = 0b01110011,
+    OpCodeType_JA         = 0b01110111,
+    OpCodeType_JNP        = 0b01111011,
+    OpCodeType_JNO        = 0b01110001,
+    OpCodeType_JNS        = 0b01111001,
+    OpCodeType_LOOP       = 0b11100010,
+    OpCodeType_LOOPZ      = 0b11100001,
+    OpCodeType_LOOPNZ     = 0b11100000,
+    OpCodeType_JCXZ       = 0b11100011
 } OpCodeType;
 
 typedef enum
@@ -178,6 +199,27 @@ uint8_t GetOpCodeType(OpCodeType* outOpCode, uint8_t opCodeByte)
     REGISTER_OPERATION(0, OpCodeType_MOV_RM_SEG)
     REGISTER_OPERATION(0, OpCodeType_MOV_SEG_RM)
 
+    REGISTER_OPERATION(0, OpCodeType_JE)
+    REGISTER_OPERATION(0, OpCodeType_JL)
+    REGISTER_OPERATION(0, OpCodeType_JLE)
+    REGISTER_OPERATION(0, OpCodeType_JB)
+    REGISTER_OPERATION(0, OpCodeType_JBE)
+    REGISTER_OPERATION(0, OpCodeType_JP)
+    REGISTER_OPERATION(0, OpCodeType_JO)
+    REGISTER_OPERATION(0, OpCodeType_JS)
+    REGISTER_OPERATION(0, OpCodeType_JNE)
+    REGISTER_OPERATION(0, OpCodeType_JNL)
+    REGISTER_OPERATION(0, OpCodeType_JG)
+    REGISTER_OPERATION(0, OpCodeType_JNB)
+    REGISTER_OPERATION(0, OpCodeType_JA)
+    REGISTER_OPERATION(0, OpCodeType_JNP)
+    REGISTER_OPERATION(0, OpCodeType_JNO)
+    REGISTER_OPERATION(0, OpCodeType_JNS)
+    REGISTER_OPERATION(0, OpCodeType_LOOP)
+    REGISTER_OPERATION(0, OpCodeType_LOOPZ)
+    REGISTER_OPERATION(0, OpCodeType_LOOPNZ)
+    REGISTER_OPERATION(0, OpCodeType_JCXZ)
+
     return 0;
 }
 
@@ -214,6 +256,8 @@ int main(int argsCount, const char** args)
         size_t i = 0;
         while (i < readCount)
         {
+            fprintf(outputFile, "label_%zu: ", i);
+
             uint8_t opCodeByte = buffer[i++];
 
             OpCodeType opCodeType;
@@ -350,6 +394,59 @@ int main(int argsCount, const char** args)
                 {
                     uint8_t isWordData = (0b00000001 & opCodeByte);
                     fprintf(outputFile, "MOV [%u], %s\n", ReadData(buffer, &i, isWordData), RegToString(RegType_AX, isWordData));
+                    break;
+                }
+                case OpCodeType_JE:
+                case OpCodeType_JL:
+                case OpCodeType_JLE:
+                case OpCodeType_JB:
+                case OpCodeType_JBE:
+                case OpCodeType_JP:
+                case OpCodeType_JO:
+                case OpCodeType_JS:
+                case OpCodeType_JNE:
+                case OpCodeType_JNL:
+                case OpCodeType_JG:
+                case OpCodeType_JNB:
+                case OpCodeType_JA:
+                case OpCodeType_JNP:
+                case OpCodeType_JNO:
+                case OpCodeType_JNS:
+                case OpCodeType_LOOP:
+                case OpCodeType_LOOPZ:
+                case OpCodeType_LOOPNZ:
+                case OpCodeType_JCXZ:
+                {
+                    char opStr[8] = {0};
+                    switch(opCodeType)
+                    {
+                        case OpCodeType_JE: strncpy(opStr, "JE", sizeof(opStr)); break;
+                        case OpCodeType_JL: strncpy(opStr, "JL", sizeof(opStr)); break;
+                        case OpCodeType_JLE: strncpy(opStr, "JLE", sizeof(opStr)); break;
+                        case OpCodeType_JB: strncpy(opStr, "JB", sizeof(opStr)); break;
+                        case OpCodeType_JBE: strncpy(opStr, "JBE", sizeof(opStr)); break;
+                        case OpCodeType_JP: strncpy(opStr, "JP", sizeof(opStr)); break;
+                        case OpCodeType_JO: strncpy(opStr, "JO", sizeof(opStr)); break;
+                        case OpCodeType_JS: strncpy(opStr, "JS", sizeof(opStr)); break;
+                        case OpCodeType_JNE: strncpy(opStr, "JNE", sizeof(opStr)); break;
+                        case OpCodeType_JNL: strncpy(opStr, "JNL", sizeof(opStr)); break;
+                        case OpCodeType_JG: strncpy(opStr, "JG", sizeof(opStr)); break;
+                        case OpCodeType_JNB: strncpy(opStr, "JNB", sizeof(opStr)); break;
+                        case OpCodeType_JA: strncpy(opStr, "JA", sizeof(opStr)); break;
+                        case OpCodeType_JNP: strncpy(opStr, "JNP", sizeof(opStr)); break;
+                        case OpCodeType_JNO: strncpy(opStr, "JNO", sizeof(opStr)); break;
+                        case OpCodeType_JNS: strncpy(opStr, "JNS", sizeof(opStr)); break;
+                        case OpCodeType_LOOP: strncpy(opStr, "LOOP", sizeof(opStr)); break;
+                        case OpCodeType_LOOPZ: strncpy(opStr, "LOOPZ", sizeof(opStr)); break;
+                        case OpCodeType_LOOPNZ: strncpy(opStr, "LOOPNZ", sizeof(opStr)); break;
+                        case OpCodeType_JCXZ: strncpy(opStr, "JCXZ", sizeof(opStr)); break;
+                        default: assert(0); break;
+                    }
+
+                    int8_t offset = (int8_t)buffer[i++];
+                    size_t labelNum = i + offset;
+
+                    fprintf(outputFile, "%s label_%zu\n", opStr, labelNum);
                     break;
                 }
                 default:
