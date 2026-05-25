@@ -300,10 +300,24 @@ int main(int argsCount, const char** args)
                         rmStr = RmToString(rm, mod, &ctx);
                     }
                     
-                    if (opCodeType == OpCodeType_ADDSUB_CMP && isSignExtended) isWordData = 0;
-
-                    uint16_t data = ReadData(buffer, &i, isWordData);
-                    fprintf(outputFile, "%s %s, %s %u\n", opStr, rmStr, isWordData ? "word" : "byte", data);
+                    if (opCodeType == OpCodeType_ADDSUB_CMP)
+                    {
+                        if (isSignExtended)
+                        {
+                            int8_t data = (int8_t)buffer[i++];
+                            fprintf(outputFile, "%s %s %s, %u\n", opStr, isWordData ? "word" : "byte", rmStr, data);
+                        }
+                        else
+                        {
+                            uint16_t data = ReadData(buffer, &i, isWordData);
+                            fprintf(outputFile, "%s %s %s, %u\n", opStr, isWordData ? "word" : "byte", rmStr, data);
+                        }
+                    }
+                    else
+                    {
+                        uint16_t data = ReadData(buffer, &i, isWordData);
+                        fprintf(outputFile, "%s %s, %s %u\n", opStr, rmStr, isWordData ? "word" : "byte", data);
+                    }
                     break;
                 }
                 case OpCodeType_MOV_IM_REG:
@@ -313,19 +327,23 @@ int main(int argsCount, const char** args)
                     fprintf(outputFile, "MOV %s, %u\n", RegToString(reg, isWordData), ReadData(buffer, &i, isWordData));
                     break;
                 }
-                case OpCodeType_MOV_MEM_AC:
                 case OpCodeType_ADD_IM__AC:
                 case OpCodeType_SUB_IM__AC:
                 case OpCodeType_CMP_IM__AC:
                 {
                     char opStr[4] = {0};
-                    if (opCodeType == OpCodeType_MOV_MEM_AC) strncpy(opStr, "MOV", sizeof(opStr));
                     if (opCodeType == OpCodeType_CMP_IM__AC) strncpy(opStr, "CMP", sizeof(opStr));
                     if (opCodeType == OpCodeType_ADD_IM__AC) strncpy(opStr, "ADD", sizeof(opStr));
                     if (opCodeType == OpCodeType_SUB_IM__AC) strncpy(opStr, "SUB", sizeof(opStr));
 
                     uint8_t isWordData = (0b00000001 & opCodeByte);
-                    fprintf(outputFile, "%s %s, [%u]\n", opStr, RegToString(RegType_AX, isWordData), ReadData(buffer, &i, isWordData));
+                    fprintf(outputFile, "%s %s, %u\n", opStr, RegToString(RegType_AX, isWordData), ReadData(buffer, &i, isWordData));
+                    break;
+                }
+                case OpCodeType_MOV_MEM_AC:
+                {
+                    uint8_t isWordData = (0b00000001 & opCodeByte);
+                    fprintf(outputFile, "MOV %s, [%u]\n", RegToString(RegType_AX, isWordData), ReadData(buffer, &i, isWordData));
                     break;
                 }
                 case OpCodeType_MOV_AC_MEM:

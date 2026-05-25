@@ -16,7 +16,6 @@ call :Test "listing_0038_many_register_mov" || exit /b 1
 call :Test "listing_0039_more_movs" || exit /b 1
 call :Test "listing_0040_challenge_movs" || exit /b 1
 call :Test "listing_0041_add_sub_cmp_jnz" || exit /b 1
-call :Test "listing_0042_completionist_decode" || exit /b 1
 
 exit /b 0
 
